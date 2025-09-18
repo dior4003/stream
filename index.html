@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head><title>Stream Preview</title></head>
+<body>
+  <video id="remoteVideo" autoplay playsinline></video>
+    <script src="https://unpkg.com/mediasoup-client@latest/lib/index.js"></script>
+      <script>
+          const socket = new WebSocket('ws://localhost:3000');
+              let device, recvTransport;
+
+                  socket.onmessage = async event => {
+                        const { action, data } = JSON.parse(event.data);
+
+                              if (action === 'routerRtpCapabilities') {
+                                      device = new mediasoupClient.Device();
+                                              await device.load({ routerRtpCapabilities: data });
+                                                      socket.send(JSON.stringify({ action: 'createTransport' }));
+                                                            }
+
+                                                                  if (action === 'transportCreated') {
+                                                                          recvTransport = device.createRecvTransport(data);
+                                                                                  socket.send(JSON.stringify({ action: 'connectTransport', data: {
+                                                                                            transportId: data.id,
+                                                                                                      dtlsParameters: recvTransport.dtlsParameters
+                                                                                                              }}));
+
+                                                                                                                      // Replace with actual producerPeerId and producerId
+                                                                                                                              socket.send(JSON.stringify({ action: 'consume', data: {
+                                                                                                                                        transportId: data.id,
+                                                                                                                                                  producerPeerId: '...', // fill dynamically
+                                                                                                                                                            producerId: '...',     // fill dynamically
+                                                                                                                                                                      rtpCapabilities: device.rtpCapabilities
+                                                                                                                                                                              }}));
+                                                                                                                                                                                    }
+
+                                                                                                                                                                                          if (action === 'consumed') {
+                                                                                                                                                                                                  const consumer = await recvTransport.consume(data);
+                                                                                                                                                                                                          const stream = new MediaStream();
+                                                                                                                                                                                                                  stream.addTrack(consumer.track);
+                                                                                                                                                                                                                          document.getElementById('remoteVideo').srcObject = stream;
+                                                                                                                                                                                                                                  await consumer.resume();
+                                                                                                                                                                                                                                        }
+                                                                                                                                                                                                                                            };
+
+                                                                                                                                                                                                                                                socket.onopen = () => {
+                                                                                                                                                                                                                                                      socket.send(JSON.stringify({ action: 'getRouterRtpCapabilities' }));
+                                                                                                                                                                                                                                                          };
+                                                                                                                                                                                                                                                            </script>
+                                                                                                                                                                                                                                                            </body>
+                                                                                                                                                                                                                                                            </html>aa
